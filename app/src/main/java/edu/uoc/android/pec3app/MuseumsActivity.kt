@@ -72,7 +72,7 @@ class MuseumsActivity : AppCompatActivity() {
         visibility = if(b) {
             View.VISIBLE
         } else {
-            Thread.sleep(2000); //time delay
+            //Thread.sleep(2000); //time delay
             View.INVISIBLE
         }
     }

@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">PEC3App</string>
     <string name="title_activity_maps">Map</string>
+    <string name="no_img">There is no image. Click on the camera to take a picture</string>
 </resources>
