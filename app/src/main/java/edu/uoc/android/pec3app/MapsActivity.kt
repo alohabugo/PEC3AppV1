@@ -4,6 +4,7 @@ import android.content.pm.PackageManager
 import android.location.Location
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.util.Log
 import androidx.core.app.ActivityCompat
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
@@ -16,16 +17,26 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
+import edu.uoc.android.pec3app.models.Element
+import edu.uoc.android.pec3app.models.Museums
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarkerClickListener {
+    val API_URL: String = "https://do.diba.cat"
+    val PAG_INI: String = "1"
+    val PAG_FI: String = "165"
+    lateinit var listMuseums: MutableList<Element> //list of returned museums
+
     override fun onMarkerClick(p0: Marker?) = false
     //manage the map from this activity
 
     private lateinit var mMap: GoogleMap
-    // access user location
-    private lateinit var fusedLocationClient : FusedLocationProviderClient
-    // user location
-    private lateinit var lastLocation: Location
+    private lateinit var fusedLocationClient : FusedLocationProviderClient //access user location
+    private lateinit var lastLocation: Location //user location
 
     companion object {
         private const val LOCATION_PERMISSION_REQUEST_CODE = 1
@@ -34,6 +45,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_maps)
+
+        //get listMuseums (retrofit)
+        dataApi()
+
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         val mapFragment = supportFragmentManager
             .findFragmentById(R.id.map) as SupportMapFragment
@@ -41,6 +56,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
 
         // get the client
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+
     }
 
     /**
@@ -63,16 +79,31 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         mMap.getUiSettings().setZoomControlsEnabled(true)
         mMap.setOnMarkerClickListener(this)
 
+
         setUpMap()
 
-        val museo = LatLng(41.3640002,2.1674931)
-        placesMarker(museo)
+        //add markers
+
+        listMuseums.forEach {
+            val coord = it.getLocalitzacio().split(",")
+            val lat = coord[0].toDouble()
+            val lon = coord[1].toDouble()
+            val museuLoc = LatLng(lat,lon)
+            val museuTit = it.getAdrecaNom()
+
+            placesMarker(museuLoc, museuTit)
+        }
+
+
+
+        //val museo = LatLng(41.3640002,2.1674931)
+        //placesMarker(museo)
 
     }
 
-    private fun placesMarker(place: LatLng) {
+    private fun placesMarker(place: LatLng, museu: String) {
         val markerOption = MarkerOptions().position(place)
-        markerOption.title("Nombre Museo")
+        markerOption.title(museu)
         markerOption.icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_museum_map))
         mMap.addMarker(markerOption)
     }
@@ -103,6 +134,32 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             }
 
         }
+    }
+
+    private fun dataApi() {
+        //Retrofit instance
+        val retrofit = Retrofit.Builder()
+            .baseUrl(API_URL)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+
+        val museumService = retrofit.create(MuseumService::class.java)
+
+        val call = museumService.museums(PAG_INI,PAG_FI)
+        //call to the api and get the list of museums
+        call.enqueue(object: Callback<Museums> {
+            //send the request async
+            override fun onResponse(call: Call<Museums>, response: Response<Museums>) {
+                if (response.code() == 200) {
+                    val museums = response.body()!!
+                    listMuseums = museums.getElements()
+                    Log.d("museus", "${listMuseums}")
+                }
+            }
+            override fun onFailure(call: Call<Museums>, t: Throwable) {
+                Log.d("museums", "onFailure" )
+            }
+        })
     }
 
 }
